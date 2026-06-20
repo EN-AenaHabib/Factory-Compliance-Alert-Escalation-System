@@ -9,6 +9,8 @@ platform.
 > **Build status:** this repository is being assembled in phases. See
 > [Project status](#project-status) below for what is implemented so far.
 
+<img width="1143" height="565" alt="image" src="https://github.com/user-attachments/assets/bcc443bc-5ce3-4ab9-9e54-1c353600f0ce" />
+
 ---
 
 ## 1. Why this design
