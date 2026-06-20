@@ -9,7 +9,7 @@ platform.
 > **Build status:** this repository is being assembled in phases. See
 > [Project status](#project-status) below for what is implemented so far.
 
-<img width="1000" height="400" alt="record_000003" src="https://github.com/user-attachments/assets/4778126f-01d4-417a-b151-a2211f21e28d" />
+<img width="700" height="400" alt="record_000003" src="https://github.com/user-attachments/assets/4778126f-01d4-417a-b151-a2211f21e28d" />
 
 
 ---
