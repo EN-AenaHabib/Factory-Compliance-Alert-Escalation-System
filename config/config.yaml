@@ -1,0 +1,80 @@
+# ============================================================================
+# config/config.yaml
+# Central configuration for the Factory Compliance & Alert Escalation System.
+# Every module reads from this file at startup. No values are hard-coded
+# inside agent logic — this is the single source of truth for paths,
+# thresholds, and model selection.
+# ============================================================================
+
+paths:
+  policy_pdf: "data/policy/compliance_policy.pdf"
+  raw_clips_dir: "data/raw_clips"
+  processed_dir: "data/processed"
+  vector_store_dir: "vector_store"
+  outputs_reports_dir: "outputs/reports"
+  outputs_logs_dir: "outputs/logs"
+  sqlite_db: "outputs/compliance_audit.db"
+
+dataset:
+  kaggle_handle: "trnhhnggiang/videodataset-for-safe-and-unsafe-behaviours"
+  auto_download: true
+  # If true and no Kaggle credentials are found, the system falls back to
+  # whatever clips already exist in data/raw_clips/ and logs a warning
+  # instead of failing the whole pipeline.
+  allow_offline_fallback: true
+
+policy_agent:
+  chunk_size_tokens: 220
+  chunk_overlap_tokens: 40
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"   # ~22M params, CPU inference < 50ms/chunk
+  vector_index_type: "faiss_flat_ip"   # exact search; dataset is small (single policy doc) so approx. index is unnecessary
+  top_k_retrieval: 4
+
+vision_agent:
+  frame_sample_rate_hz: 4          # sample 4 frames/sec instead of full 25-30fps -> ~85% compute reduction
+  resize_to: [640, 360]             # downscale from 1080p before inference -> ~9x fewer pixels processed
+  detector_backend: "onnx_mobilenet_lite"   # see docs/GREEN_AI.md for rationale
+  uncertainty_margin: 0.15          # confidence band treated as "borderline" -> routed to MEDIUM by default per policy guidance
+
+behavior_classes:
+  - id: "pedestrian_movement"
+    label: "Pedestrian Walkway Violation"
+  - id: "equipment_intervention"
+    label: "Unsafe Equipment Intervention"
+  - id: "electrical_panel_management"
+    label: "Electrical Panel Violation"
+  - id: "forklift_load_management"
+    label: "Forklift Overload Violation"
+
+severity_matrix:
+  tiers: ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+  # Base tier per behavior class, as retrieved from the policy by the Policy
+  # Agent (WARNING vs CRITICAL SAFETY NOTICE callouts). These are DEFAULTS
+  # used only if policy retrieval is inconclusive for a given clip; the
+  # Risk Assessment Agent overrides them using retrieved policy context.
+  default_tier_by_class:
+    pedestrian_movement: "MEDIUM"
+    equipment_intervention: "HIGH"
+    electrical_panel_management: "CRITICAL"
+    forklift_load_management: "HIGH"
+  personnel_proximity_escalation: true   # bumps LOW->MEDIUM or MEDIUM->HIGH when personnel detected in-frame
+
+escalation:
+  realtime_channel: "sse"          # "sse" or "inprocess_pubsub"
+  alert_tiers: ["HIGH", "CRITICAL"]
+  log_only_tiers: ["LOW", "MEDIUM"]
+
+abm:
+  scheduler: "RandomActivation"     # see docs/ABM_DESIGN.md for justification
+  steps_per_clip: 1
+  random_seed: 42
+
+backend:
+  host: "0.0.0.0"
+  port: 8000
+  cors_allow_origins: ["http://localhost:5173", "http://localhost:3000"]
+
+green_ai:
+  log_resource_usage: true
+  max_cpu_threads: 4
+  target_avg_inference_watt_estimate: 12   # documented estimate, see docs/GREEN_AI.md

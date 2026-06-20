@@ -1,0 +1,39 @@
+# ============================================================================
+# docker-compose.yml
+# Two services, both CPU-only. No `runtime: nvidia`, no GPU device requests —
+# consistent with the Green AI / no-heavy-GPU constraint of this project.
+# ============================================================================
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: fcaes-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./vector_store:/app/vector_store
+      - ./config:/app/config
+    env_file:
+      - .env
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+
+  dashboard:
+    build:
+      context: ./src/dashboard
+      dockerfile: ../../Dockerfile.frontend
+    container_name: fcaes-dashboard
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
