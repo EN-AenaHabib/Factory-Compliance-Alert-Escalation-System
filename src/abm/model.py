@@ -94,9 +94,13 @@ def discover_clips(config: dict) -> list[tuple[str, str]]:
 
 
 def run_batch(config: dict | None = None) -> ComplianceModel:
+    import time
+
     cfg = config or load_config()
     model = ComplianceModel(cfg)
-    clips = discover_clips(cfg)
+
+    # Only process first 10 clips for testing
+    clips = discover_clips(cfg)[:10]
 
     if not clips:
         logger.warning(
@@ -105,11 +109,49 @@ def run_batch(config: dict | None = None) -> ComplianceModel:
         )
         return model
 
-    logger.info(f"Processing {len(clips)} clip(s) through the ABM pipeline...")
-    for clip_id, clip_path in clips:
-        model.process_clip(clip_id, clip_path)
+    print("\n" + "=" * 60)
+    print("ABM CLIP PROCESSING")
+    print("=" * 60)
+    print(f"Total clips to process: {len(clips)}")
+    print()
+
+    overall_start = time.time()
+
+    for i, (clip_id, clip_path) in enumerate(clips, start=1):
+        print(f"[{i}/{len(clips)}] Processing: {clip_id}")
+
+        clip_start = time.time()
+
+        try:
+            model.process_clip(clip_id, clip_path)
+
+            clip_time = time.time() - clip_start
+
+            print(
+                f"✓ Completed: {clip_id} "
+                f"({clip_time:.2f}s)"
+            )
+
+        except Exception as e:
+            print(f"✗ Failed: {clip_id}")
+            print(f"  Error: {e}")
+
+        print("-" * 60)
+
+    total_time = time.time() - overall_start
+
+    print("\n" + "=" * 60)
+    print("ABM PROCESSING COMPLETE")
+    print("=" * 60)
+    print(f"Total Runtime:       {total_time:.2f}s")
+    print(f"Clips Processed:     {model.run_stats['clips_processed']}")
+    print(f"Time Per Clip:       {total_time/max(model.run_stats['clips_processed'],1):.2f}s")
+    print(f"Detections:          {model.run_stats['detections_by_class']}")
+    print(f"Severity Counts:     {model.run_stats['severities_by_tier']}")
+    print("=" * 60)
 
     logger.info(f"Run complete. Stats: {model.run_stats}")
+
     return model
 
 
