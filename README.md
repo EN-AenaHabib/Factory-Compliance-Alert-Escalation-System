@@ -40,6 +40,8 @@ reasons:
 Full system diagrams and the inter-agent data flow are in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+you can find system documentations in the docs folder where multiple mds are present.
+
 ## 2. Project status
 
 | Component | Status |
