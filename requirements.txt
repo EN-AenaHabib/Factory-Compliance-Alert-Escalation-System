@@ -1,47 +1,22 @@
-# ============================================================================
-# Factory Compliance & Alert Escalation System
-# requirements.txt
-#
-# GREEN AI NOTE: Every dependency below was chosen to run on CPU-only
-# hardware with no external API calls. No torch+cuda builds, no GPT/Claude/
-# OpenAI SDKs, no managed vector DB clients. See docs/GREEN_AI.md for the
-# justification of each major choice.
-# ============================================================================
-
-# --- Core ---
-numpy==1.26.4
-pyyaml==6.0.1
-python-dotenv==1.0.1
-tqdm==4.66.4
-
-# --- Policy Agent: offline RAG pipeline ---
-pypdf==4.2.0                  # PDF text extraction (pure python, no OCR/GPU)
-sentence-transformers==2.7.0  # local embedding model (all-MiniLM-L6-v2, ~80MB, CPU-fast)
-faiss-cpu==1.8.0               # local vector index, no server/daemon required
-
-# --- Vision Agent: lightweight CV ---
-opencv-python-headless==4.9.0.80   # frame extraction + classical CV (motion, color, contours)
-scikit-learn==1.4.2                 # lightweight classifiers (SVM/RandomForest) for indicator -> class mapping
-onnxruntime==1.17.3                  # CPU inference runtime for the optional compact detector model
-pillow==10.3.0
-
-# --- ABM (Agent-Based Modeling) ---
-mesa==2.3.0                    # agent-based modeling framework (Policy/Vision/Risk/Escalation/Audit agents)
-networkx==3.3                  # agent interaction graph / scheduling support
-
-# --- Backend services ---
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-sse-starlette==2.1.0           # lightweight Server-Sent Events for real-time alert push
-sqlalchemy==2.0.30
-aiosqlite==0.20.0
-
-# --- Dataset acquisition ---
-kagglehub==0.2.5               # local, credential-based dataset download (no proprietary SDK lock-in)
-
-# --- Reporting / export ---
-pandas==2.2.2
-
-# --- Testing & evaluation ---
-pytest==8.2.0
-matplotlib==3.8.4              # offline plotting for evaluation metrics (no notebook/cloud dependency)
+numpy>=2.0.0
+pyyaml>=6.0.1
+python-dotenv>=1.0.1
+tqdm>=4.66.4
+pypdf>=4.2.0
+sentence-transformers>=2.7.0
+faiss-cpu>=1.7.4
+opencv-python-headless>=4.8.0
+scikit-learn>=1.3.0
+onnxruntime>=1.16.0
+pillow>=10.0.0
+mesa==2.3.0
+networkx>=3.0
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+sse-starlette>=2.0.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+kagglehub>=0.2.5
+pandas>=2.0.0
+pytest>=8.0.0
+matplotlib>=3.7.0
