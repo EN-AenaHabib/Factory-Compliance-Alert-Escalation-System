@@ -33,7 +33,7 @@ policy_agent:
 vision_agent:
   frame_sample_rate_hz: 4          # sample 4 frames/sec instead of full 25-30fps -> ~85% compute reduction
   resize_to: [640, 360]             # downscale from 1080p before inference -> ~9x fewer pixels processed
-  detector_backend: "onnx_mobilenet_lite"   # see docs/GREEN_AI.md for rationale
+  detector_backend: "mog2_classical_cv"   # see docs/GREEN_AI.md for rationale
   uncertainty_margin: 0.15          # confidence band treated as "borderline" -> routed to MEDIUM by default per policy guidance
 
 behavior_classes:
