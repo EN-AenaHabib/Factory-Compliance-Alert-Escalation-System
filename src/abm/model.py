@@ -1,13 +1,5 @@
 """
 src/abm/model.py
-
-The ABM core. ComplianceModel registers the five pipeline agents on a
-mesa.time.RandomActivation scheduler and exposes process_clip(), which runs
-one full Policy->Vision->Risk->Escalation->Audit chain against the shared
-Blackboard. See docs/ABM_DESIGN.md for the scheduler justification.
-
-Run as a batch driver directly:
-    python3 -m src.abm.model
 """
 import mesa
 
@@ -34,8 +26,6 @@ class ComplianceModel(mesa.Model):
         self.schedule = mesa.time.RandomActivation(self)
         self.blackboard = Blackboard()
 
-        # Run-level accumulators, used by the Risk Agent's recurrence rule
-        # (Section 4, ABM_DESIGN.md) and by docs/EVALUATION.md metrics.
         self.run_stats = {
             "clips_processed": 0,
             "detections_by_class": {},
@@ -51,13 +41,19 @@ class ComplianceModel(mesa.Model):
         escalation_agent = EscalationAgent(self.next_id(), self, self.config)
         audit_agent = AuditAgent(self.next_id(), self, self.config)
 
-        # Registration order doesn't determine execution order under
-        # RandomActivation (by design — see docs/ABM_DESIGN.md §4); the
-        # actual Policy->Vision->Risk->Escalation->Audit dependency is
-        # enforced inside each agent's step() via the blackboard contract,
-        # not by scheduler sequencing.
         for agent in [policy_agent, vision_agent, risk_agent, escalation_agent, audit_agent]:
             self.schedule.add(agent)
+
+        # Strict ordered list — guarantees Policy->Vision->Risk->Escalation->Audit
+        # RandomActivation shuffles randomly which broke AuditAgent reading
+        # empty blackboard.escalations before EscalationAgent populated it.
+        self._ordered_agents = [
+            policy_agent,
+            vision_agent,
+            risk_agent,
+            escalation_agent,
+            audit_agent,
+        ]
 
         self.agents_by_role = {
             "policy": policy_agent,
@@ -69,7 +65,11 @@ class ComplianceModel(mesa.Model):
 
     def process_clip(self, clip_id: str, clip_path: str) -> Blackboard:
         self.blackboard.reset_for_clip(clip_id, clip_path)
-        self.schedule.step()
+        # Execute in strict order instead of schedule.step()
+        # This guarantees Vision writes detections BEFORE Risk reads them,
+        # and Escalation writes escalations BEFORE Audit reads them.
+        for agent in self._ordered_agents:
+            agent.step()
         self._update_run_stats()
         self.run_stats["clips_processed"] += 1
         return self.blackboard
@@ -94,13 +94,9 @@ def discover_clips(config: dict) -> list[tuple[str, str]]:
 
 
 def run_batch(config: dict | None = None) -> ComplianceModel:
-    import time
-
     cfg = config or load_config()
     model = ComplianceModel(cfg)
-
-    # Only process first 10 clips for testing
-    clips = discover_clips(cfg)[:10]
+    clips = discover_clips(cfg)
 
     if not clips:
         logger.warning(
@@ -109,49 +105,11 @@ def run_batch(config: dict | None = None) -> ComplianceModel:
         )
         return model
 
-    print("\n" + "=" * 60)
-    print("ABM CLIP PROCESSING")
-    print("=" * 60)
-    print(f"Total clips to process: {len(clips)}")
-    print()
-
-    overall_start = time.time()
-
-    for i, (clip_id, clip_path) in enumerate(clips, start=1):
-        print(f"[{i}/{len(clips)}] Processing: {clip_id}")
-
-        clip_start = time.time()
-
-        try:
-            model.process_clip(clip_id, clip_path)
-
-            clip_time = time.time() - clip_start
-
-            print(
-                f"✓ Completed: {clip_id} "
-                f"({clip_time:.2f}s)"
-            )
-
-        except Exception as e:
-            print(f"✗ Failed: {clip_id}")
-            print(f"  Error: {e}")
-
-        print("-" * 60)
-
-    total_time = time.time() - overall_start
-
-    print("\n" + "=" * 60)
-    print("ABM PROCESSING COMPLETE")
-    print("=" * 60)
-    print(f"Total Runtime:       {total_time:.2f}s")
-    print(f"Clips Processed:     {model.run_stats['clips_processed']}")
-    print(f"Time Per Clip:       {total_time/max(model.run_stats['clips_processed'],1):.2f}s")
-    print(f"Detections:          {model.run_stats['detections_by_class']}")
-    print(f"Severity Counts:     {model.run_stats['severities_by_tier']}")
-    print("=" * 60)
+    logger.info(f"Processing {len(clips)} clip(s) through the ABM pipeline...")
+    for clip_id, clip_path in clips:
+        model.process_clip(clip_id, clip_path)
 
     logger.info(f"Run complete. Stats: {model.run_stats}")
-
     return model
 
 
